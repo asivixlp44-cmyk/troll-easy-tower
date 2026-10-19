@@ -1671,18 +1671,20 @@ function buildDecor() {
     cloudMat = new T.ShaderMaterial({
         transparent: true, depthWrite: false,
         uniforms: { uMap: { value: cloudSpriteTex() }, uTime: { value: 0 }, uLow: { value: 0 } },
-        vertexShader: `attribute vec3 aCenter; attribute vec3 aInfo; attribute float aLow; uniform float uTime; uniform float uLow; varying vec2 vUv;
+        vertexShader: `attribute vec3 aCenter; attribute vec3 aInfo; attribute float aLow; uniform float uTime; uniform float uLow; varying vec2 vUv; varying float vFade;
             void main() {
                 vUv = uv;
                 // each cloud drifts slowly round the tower
                 float a = uTime * aInfo.z * 0.0012;
                 vec3 c = vec3(aCenter.x * cos(a) - aCenter.z * sin(a), aCenter.y, aCenter.x * sin(a) + aCenter.z * cos(a));
                 vec4 mv = viewMatrix * vec4(c, 1.0); mv.xy += position.xy * aInfo.xy;
+                // a cloud the camera flies into fades away instead of washing the screen white
+                vFade = smoothstep(aInfo.x * 0.35, aInfo.x * 0.9, -mv.z);
                 gl_Position = projectionMatrix * mv;
                 if (uLow > 0.5 && aLow > 0.5) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
             }`,
-        fragmentShader: `uniform sampler2D uMap; varying vec2 vUv;
-            void main() { vec4 c = texture2D(uMap, vUv); if (c.a < 0.01) discard; gl_FragColor = vec4(c.rgb, c.a * 0.9);
+        fragmentShader: `uniform sampler2D uMap; varying vec2 vUv; varying float vFade;
+            void main() { if (vFade < 0.01) discard; vec4 c = texture2D(uMap, vUv); if (c.a < 0.01) discard; gl_FragColor = vec4(c.rgb, c.a * 0.9 * vFade);
                 #include <colorspace_fragment>
             }`,
     });

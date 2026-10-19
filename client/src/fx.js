@@ -14,8 +14,8 @@ let quality = isTouch || weakPC ? 'low' : 'medium';
 try { quality = localStorage.getItem('tet_quality') || quality; } catch (e) { /* default */ }
 if (!QUALITIES[quality]) quality = 'medium';
 
-// Neutral tone mapping keeps every colour close to its authored sRGB value
-renderer.toneMapping = T.NeutralToneMapping;
+// No tone mapping, like Bloxity's top games: colours go to the screen as lit
+renderer.toneMapping = T.NoToneMapping;
 renderer.toneMappingExposure = 1.0;
 
 // Shadows are never switched off in the renderer: that changes every lit shader and recompiles them

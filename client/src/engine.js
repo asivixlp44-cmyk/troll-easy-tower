@@ -136,10 +136,10 @@ resize();
 // No image-based environment map, no reflections: building one (PMREM blur shaders) froze slow PCs
 // for seconds at load. A sky / ground hemisphere light gives the soft fill, the sun adds direction
 // and crisp shadows on top, and a little ambient keeps the shade from going dull.
-export const hemi = new T.HemisphereLight(0xeaf2ff, 0xb8c0d0, 1.9);
-export const ambient = new T.AmbientLight(0xffffff, 0.32);
+export const hemi = new T.HemisphereLight(0xeaf2ff, 0xb8c0d0, 1.1);
+export const ambient = new T.AmbientLight(0xffffff, 0.45);
 scene.add(hemi, ambient);
-export const sun = new T.DirectionalLight(0xfff4ea, 2.7);
+export const sun = new T.DirectionalLight(0xfff4ea, 1.5);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -64, right: 64, top: 64, bottom: -64, near: 1, far: 360 });
@@ -152,13 +152,13 @@ scene.add(sun, sun.target);
 // day: the green laps and the lobby; pink: the magenta laps; dusk: the blue laps; violet: the purple
 // laps near the top; warm: the roof and the victory platform in the golden light
 const MOODS = {
-    violet: { zen: 0x3a2ab0, hor: 0xe0c8ff, haze: 0xf0e2ff, sea: 0xe6dcff, fog: 0xe2d6f6, sky: 0xf2e8ff, ground: 0xb8a0d8, hemi: 1.85, sun: 0xffeef0, sunI: 2.7, amb: 0.34, night: 0.04 },
-    day: { zen: 0x2a78f4, hor: 0xbfe2ff, haze: 0xe4f4ff, sea: 0xffffff, fog: 0xd8ecff, sky: 0xeaf6ff, ground: 0xb4d8c8, hemi: 1.9, sun: 0xfff4ea, sunI: 2.75, amb: 0.32, night: 0 },
-    pink: { zen: 0x4a6af0, hor: 0xffd6f2, haze: 0xffeaf8, sea: 0xf0e6ff, fog: 0xf2e2f6, sky: 0xffeefa, ground: 0xd0b0d0, hemi: 1.9, sun: 0xfff0f4, sunI: 2.7, amb: 0.33, night: 0 },
-    dusk: { zen: 0x2a3ac0, hor: 0xc8c0ff, haze: 0xe2dcff, sea: 0xd6d8ff, fog: 0xd4d4f6, sky: 0xe8e6ff, ground: 0xa4a4d4, hemi: 1.85, sun: 0xfff0e2, sunI: 2.65, amb: 0.34, night: 0.05 },
-    warm: { zen: 0x3a7ae8, hor: 0xffe2b4, haze: 0xfff2da, sea: 0xfff2e4, fog: 0xf6e8d6, sky: 0xfff2de, ground: 0xd0b498, hemi: 1.9, sun: 0xffe8c4, sunI: 2.8, amb: 0.33, night: 0 },
+    violet: { zen: 0x3a2ab0, hor: 0xe0c8ff, haze: 0xf0e2ff, sea: 0xe6dcff, fog: 0xe2d6f6, sky: 0xf2e8ff, ground: 0xb8a0d8, hemi: 1.1, sun: 0xffeef0, sunI: 1.5, amb: 0.45, night: 0.04 },
+    day: { zen: 0x2a78f4, hor: 0xbfe2ff, haze: 0xe4f4ff, sea: 0xffffff, fog: 0xd8ecff, sky: 0xeaf6ff, ground: 0xb4d8c8, hemi: 1.1, sun: 0xfff4ea, sunI: 1.5, amb: 0.45, night: 0 },
+    pink: { zen: 0x4a6af0, hor: 0xffd6f2, haze: 0xffeaf8, sea: 0xf0e6ff, fog: 0xf2e2f6, sky: 0xffeefa, ground: 0xd0b0d0, hemi: 1.1, sun: 0xfff0f4, sunI: 1.5, amb: 0.45, night: 0 },
+    dusk: { zen: 0x2a3ac0, hor: 0xc8c0ff, haze: 0xe2dcff, sea: 0xd6d8ff, fog: 0xd4d4f6, sky: 0xe8e6ff, ground: 0xa4a4d4, hemi: 1.1, sun: 0xfff0e2, sunI: 1.5, amb: 0.45, night: 0.05 },
+    warm: { zen: 0x3a7ae8, hor: 0xffe2b4, haze: 0xfff2da, sea: 0xfff2e4, fog: 0xf6e8d6, sky: 0xfff2de, ground: 0xd0b498, hemi: 1.1, sun: 0xffe8c4, sunI: 1.5, amb: 0.45, night: 0 },
 };
-const moodNow = { zen: new T.Color(), hor: new T.Color(), haze: new T.Color(), sea: new T.Color(), fog: new T.Color(), sky: new T.Color(), ground: new T.Color(), sunC: new T.Color(), hemi: 1.9, sunI: 2.7, amb: 0.32, night: 0 };
+const moodNow = { zen: new T.Color(), hor: new T.Color(), haze: new T.Color(), sea: new T.Color(), fog: new T.Color(), sky: new T.Color(), ground: new T.Color(), sunC: new T.Color(), hemi: 1.1, sunI: 1.5, amb: 0.45, night: 0 };
 let moodName = 'day', moodK = 1;
 const tmpMood = new T.Color();
 function applyMood(m, k) {

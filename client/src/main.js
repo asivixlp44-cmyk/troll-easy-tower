@@ -579,8 +579,10 @@ class Remote {
             if (s) stepQuiet(s.mat);
         }
         this.stepN = stepN;
-        u.pivot.position.y = PIVOT + (moving ? Math.abs(Math.sin(this.phase)) * 0.16 : 0);
-        this.lean = (this.lean || 0) + ((moving ? 0.13 : fly ? 0.2 : 0) - (this.lean || 0)) * Math.min(1, dt * 8);
+        // a Bloxity avatar bobs and leans by itself (animator.js); this is for the blocky stand-in
+        const own = !this.blox;
+        u.pivot.position.y = PIVOT + (moving && own ? Math.abs(Math.sin(this.phase)) * 0.16 : 0);
+        this.lean = (this.lean || 0) + ((moving && own ? 0.13 : fly ? 0.2 : 0) - (this.lean || 0)) * Math.min(1, dt * 8);
         u.pivot.rotation.set(this.lean, 0, 0);
         setTool(r, p.tool); setTrail(r, p.trail);
         if (u.carpet) { u.carpet.visible = fly; if (fly) waveCarpet(u.carpet, t, 1); }
@@ -1364,7 +1366,7 @@ function update(dt) {
         if (P.slapAnim > 0) P.slapAnim = Math.max(0, P.slapAnim - dt);
         const slapK = P.slapAnim > 0 ? 1 - P.slapAnim / 0.28 : 0;
         swingHeld(u, slapK);
-        if (localAvatar) { localAvatar.update(dt, { moving: P.moving && P.onGround, air: !P.onGround && !P.climbing, speed: hs, t, pose: P.climbing ? 'climb' : undefined, hold: !!u.held, slap: slapK }); followHand(u); }
+        if (localAvatar) { localAvatar.update(dt, { moving: P.moving && P.onGround, air: !P.onGround && !P.climbing, vy: P.climbing ? 0 : P.vel.y, speed: hs, t, pose: P.climbing ? 'climb' : undefined, hold: !!u.held, slap: slapK }); followHand(u); }
         setTool(rig, id); setTrail(rig, S.trail);
         if (u.carpet) { u.carpet.visible = P.flying; waveCarpet(u.carpet, t, P.moving ? 1.4 : 0.8); }
         u.trail.update(trailAt(rig), (P.moving || !P.onGround), dt, t);
@@ -1372,21 +1374,24 @@ function update(dt) {
         if (P.onGround && P.moving && stepN !== P.lastStepN && P.ground) footStep(P.ground);
         if (P.climbing && stepN !== P.lastStepN && P.vel.y > 0) surfStep('truss', false);
         P.lastStepN = stepN;
-        const runBob = P.onGround && P.moving && !P.climbing ? Math.abs(Math.sin(P.animPhase)) * 0.18 : 0;
+        // the Bloxity avatar bobs, leans and lands by itself (animator.js): the whole-body bob, lean,
+        // roll and squash below are for the blocky stand-in only
+        const own = !localAvatar;
+        const runBob = own && P.onGround && P.moving && !P.climbing ? Math.abs(Math.sin(P.animPhase)) * 0.18 : 0;
         u.pivot.position.y = PIVOT + runBob;
-        const leanTo = P.climbing ? 0 : P.flying ? (P.moving ? 0.28 : 0) : P.onGround && P.moving ? Math.min(0.2, ws * 0.007) : !P.onGround ? -0.06 : 0;
+        const leanTo = P.climbing ? 0 : P.flying ? (P.moving ? 0.28 : 0) : !own ? 0 : P.onGround && P.moving ? Math.min(0.2, ws * 0.007) : !P.onGround ? -0.06 : 0;
         P.lean = (P.lean || 0) + (leanTo - (P.lean || 0)) * Math.min(1, dt * 9);
         let turn = P.facing - (P.prevFacing ?? P.facing);
         turn = Math.atan2(Math.sin(turn), Math.cos(turn));
         P.prevFacing = P.facing;
-        const rollTo = clamp(-turn / Math.max(dt, 1e-3) * 0.045, -0.22, 0.22) * (P.moving ? 1 : 0);
+        const rollTo = clamp(-turn / Math.max(dt, 1e-3) * 0.045, -0.22, 0.22) * (P.moving && own ? 1 : 0);
         P.roll = (P.roll || 0) + (rollTo - (P.roll || 0)) * Math.min(1, dt * 7);
         u.pivot.rotation.set(P.lean, 0, P.roll);
         P.squashV += (1 - P.squash) * 180 * dt;
         P.squashV *= Math.exp(-12 * dt);
         P.squash = clamp(P.squash + P.squashV * dt, 0.72, 1.28);
-        const sc = u.fxScale;
-        rig.scale.set(sc / Math.sqrt(P.squash), sc * P.squash, sc / Math.sqrt(P.squash));
+        const sc = u.fxScale, sq = own ? P.squash : 1;
+        rig.scale.set(sc / Math.sqrt(sq), sc * sq, sc / Math.sqrt(sq));
         tickShield(rig, dt);
         // my own status looks: a bubble, an ice block, flames
         setStatusLook(rig, (P.bubbleT > 0 ? 'b' : '') + (P.frozenT > 0 ? 'f' : '') + (P.fireT > 0 ? 'x' : ''), dt, t);
