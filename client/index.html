@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Troll Easy Tower</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='6' y='6' width='88' height='88' rx='18' fill='%23ffd028' stroke='%2312204a' stroke-width='6'/%3E%3Cpath d='M24 50q26 22 52 0q-4 26-26 26t-26-26z' fill='%23fff' stroke='%2312204a' stroke-width='5' stroke-linejoin='round'/%3E%3Cpath d='M28 34q10-8 18 0M54 34q10-8 18 0' fill='none' stroke='%2312204a' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Montserrat:wght@800&display=swap">
+<style>
+:root {
+    color-scheme: light;
+    --ink: #12204a;
+    --yellow: #ffd028;
+    --green: #46ec50;
+    --blue: #28c8ff;
+    --red: #e82434;
+    --white: #ffffff;
+    --font: "Fredoka", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+    font-size: clamp(9px, calc(100vmin / 56), 17px);
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #6ab8ff; }
+body { font-family: var(--font); color: var(--white); user-select: none; -webkit-user-select: none; touch-action: none; }
+#app { position: fixed; inset: 0; }
+#view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+#speedLines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* a soft vignette drawn by the page, not by a post pass (free) */
+#vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(10, 30, 60, 0.18) 100%); }
+button { font-family: var(--font); cursor: pointer; color: var(--white); }
+button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+
+.o { text-shadow: -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 2px 2px 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 3px 0 var(--ink); }
+.o1 { text-shadow: -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink), 1px 1px 0 var(--ink), 0 1.5px 0 var(--ink); }
+
+.btn {
+    border: 3px solid var(--ink); border-radius: 0.8rem; font-weight: 700;
+    box-shadow: inset 0 -0.3rem 0 rgba(0, 0, 0, 0.2), inset 0 0.2rem 0 rgba(255, 255, 255, 0.35), 0 0.2rem 0 var(--ink);
+    transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1), filter 0.15s ease;
+}
+.btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.04); filter: brightness(1.08); }
+.btn:active:not(:disabled) { transform: translateY(2px) scale(0.95); transition-duration: 0.06s; }
+.btn:disabled { filter: grayscale(0.7) brightness(0.85); cursor: default; }
+.g-yellow { background: linear-gradient(#fff07a, #ffc414); }
+.g-green { background: linear-gradient(#8aff7a, #22c73a); }
+.g-blue { background: linear-gradient(#7ae6ff, #1f8fff); }
+.g-red { background: linear-gradient(#ff7a8a, #e8182c); }
+.g-purple { background: linear-gradient(#e27bff, #8a1cff); }
+.g-pink { background: linear-gradient(#ffa8d0, #ff3f8a); }
+.g-grey { background: linear-gradient(#d8dce8, #8a90a4); }
+.g-gold { background: linear-gradient(#fff2a0, #ffb81c); }
+.g-rainbow { background: linear-gradient(100deg, #ff3c5a 0%, #ffb51c 22%, #ffe83a 38%, #46ec50 55%, #28c8ff 72%, #8a5aff 88%, #ff4ad8 100%); }
+@keyframes shine { 0%, 82% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(160%) skewX(-20deg); } }
+
+/* HUD ------------------------------------------------------------------ */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud > * { pointer-events: auto; }
+#hud .passive { pointer-events: none; }
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
+#blind { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 46%, rgba(10,6,30,0.55) 0%, rgba(8,4,24,0.96) 34%, #05020f 70%); opacity: 0; transition: opacity 0.4s ease; }
+#blind.on { opacity: 1; }
+
+/* The reference's chunky buttons: a gradient bar, big outlined text, the item poking out on the right */
+.chunk { position: relative; display: flex; align-items: center; justify-content: center; gap: 0.3rem; height: 3.3rem; padding: 0 2.6rem 0 1rem; border: 0.2rem solid var(--ink); border-radius: 0.45rem; font-size: 1.55rem; font-weight: 700; color: #fff; box-shadow: inset 0 -0.35rem 0 rgba(0,0,0,0.22), inset 0 0.25rem 0 rgba(255,255,255,0.4), 0 0.22rem 0 var(--ink), 0 0.4rem 0.9rem rgba(10,20,60,0.25); overflow: visible; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1); white-space: nowrap; }
+.chunk:hover { transform: translateY(-2px) scale(1.04); }
+.chunk:active { transform: translateY(2px) scale(0.95); }
+.chunk .ico { position: absolute; right: -1.1rem; top: 50%; transform: translateY(-55%) rotate(-12deg); font-size: 2.5rem; line-height: 1; filter: drop-shadow(0 0.15rem 0 rgba(0,0,0,0.35)); pointer-events: none; }
+.chunk .sub { position: absolute; left: 0; right: 0; bottom: -1.15rem; text-align: center; font-size: 0.95rem; color: #9aff7a; }
+.chunk .sheen { position: absolute; inset: 0; overflow: hidden; border-radius: 0.3rem; pointer-events: none; }
+.chunk .sheen::after { content: ''; position: absolute; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); transform: translateX(-120%) skewX(-20deg); animation: shine 5s ease-in-out infinite; }
+.chunk.on { box-shadow: 0 0 0 0.22rem #fff, 0 0 1.2rem 0.3rem rgba(255,255,255,0.7), inset 0 -0.35rem 0 rgba(0,0,0,0.22); }
+.c-red { background: linear-gradient(#ff5a5a, #d8141e); }
+.c-lime { background: linear-gradient(#a8ff4a, #3ac81a); }
+.c-green { background: linear-gradient(#6aff5a, #1ec83a); }
+.c-blue { background: linear-gradient(#5ad8ff, #1a6ae8); }
+.c-dark { background: linear-gradient(#5a5e6e, #2a2c36); }
+.c-rainbow { background: linear-gradient(100deg, #ff3c5a 0%, #ffb51c 22%, #ffe83a 38%, #46ec50 55%, #28c8ff 72%, #8a5aff 88%, #ff4ad8 100%); }
+
+/* Top centre: Nuke Server and Skip To Final, the stage bar and your Wins under them */
+#topBar { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 0.7rem); transform: translateX(-50%); display: grid; justify-items: center; gap: 1.4rem; }
+#topBtns { display: flex; gap: 2.4rem; }
+#infoRow { display: flex; align-items: center; gap: 0.5rem; }
+#stageBar { position: relative; width: min(19rem, 34vw); height: 2rem; border-radius: 0.8rem; background: rgba(18,32,74,0.55); border: 0.18rem solid rgba(255,255,255,0.85); box-shadow: 0 0.2rem 0 rgba(18,32,74,0.5); overflow: hidden; }
+#stageFill { position: absolute; left: 0; top: 0; bottom: 0; width: 8%; background: linear-gradient(#8affc8, #22c87a); border-radius: 0 0.6rem 0.6rem 0; transition: width 0.6s cubic-bezier(0.3, 1.3, 0.5, 1), background 0.6s ease; }
+#stageText { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.1rem; font-weight: 700; }
+#coinBar { position: relative; display: flex; align-items: center; gap: 0.35rem; min-width: 7.6rem; height: 2rem; padding: 0 0.2rem 0 0.25rem; border: 0.18rem solid var(--ink); border-radius: 1.1rem; background: #ffffff; box-shadow: inset 0 -0.22rem 0 rgba(0,0,0,0.08), 0 0.2rem 0 var(--ink); }
+#coinBar .trophy { font-size: 1.4rem; line-height: 1; margin-top: -0.2rem; }
+#coinBar b { flex: 1; text-align: center; font-size: 1.15rem; font-weight: 700; color: #3a4258; font-variant-numeric: tabular-nums; }
+#coinBar.bump { animation: bump 0.45s cubic-bezier(0.34, 1.8, 0.5, 1); }
+@keyframes bump { 35% { transform: scale(1.15); } }
+#coinPlus { width: 1.6rem; height: 1.6rem; padding: 0; font-size: 1.2rem; line-height: 1; border-radius: 50%; border-width: 2px; display: grid; place-items: center; }
+#boostTag { position: absolute; left: 50%; bottom: -1.2rem; transform: translateX(-50%); font-size: 0.8rem; font-weight: 700; color: #fff06a; white-space: nowrap; }
+
+/* Left: Fly / Mega Punch / Laser Gun / Admin */
+#leftCol { position: absolute; left: max(1.2rem, calc(env(safe-area-inset-left, 0px) + 0.8rem)); top: max(10.5rem, 30vh); display: grid; gap: 0.75rem; justify-items: start; }
+#leftCol .chunk { min-width: 11.5rem; }
+#btnAdmin .hd { display: grid; place-items: center; width: 2.6rem; height: 2.4rem; margin-left: -0.6rem; margin-right: 0.3rem; background: #000; border-radius: 0.3rem; font-size: 1.3rem; }
+
+/* Right: Big Slap, Troll, then the round x2 Speed Slap / x2 Jump */
+#rightCol { position: absolute; right: max(1rem, env(safe-area-inset-right, 0px)); top: max(8.5rem, 24vh); display: grid; gap: 1.1rem; justify-items: center; }
+.icon { position: relative; display: grid; justify-items: center; padding: 0; border: 0; background: none; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1); }
+.icon:hover { transform: scale(1.08); }
+.icon:active { transform: scale(0.92); }
+.icon .pic { display: grid; place-items: center; width: 4.4rem; height: 4.4rem; font-size: 3.2rem; line-height: 1; filter: drop-shadow(0 0.18rem 0 rgba(0,0,0,0.35)); }
+.icon .lb { margin-top: 0.1rem; font-size: 1rem; font-weight: 700; white-space: nowrap; }
+.icon .bang { position: absolute; top: 0; right: 0.1rem; font-size: 1.4rem; color: #ff2a3a; font-weight: 800; }
+#btnTroll .pic { width: 4rem; height: 4rem; border-radius: 0.4rem; border: 0.22rem solid #8a5a00; background: var(--troll) center / 100% no-repeat, #ffd028; box-shadow: inset 0 -0.3rem 0 rgba(140,80,0,0.3), 0 0.22rem 0 var(--ink); }
+.round { position: relative; width: 4.6rem; height: 4.6rem; padding: 0; border-radius: 50%; border: 0.2rem solid #fff; background: radial-gradient(circle at 35% 30%, #4aa86a, #1e5a3a 70%); box-shadow: 0 0 0 0.2rem var(--ink), 0 0.3rem 0.8rem rgba(0,0,0,0.3); display: grid; place-content: center; text-align: center; font-weight: 700; font-size: 1rem; line-height: 1.05; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1); }
+.round:hover { transform: scale(1.07); }
+.round:active { transform: scale(0.92); }
+.round big { display: block; font-size: 1.25rem; }
+.round .coin { position: absolute; top: -0.95rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 0.15rem; padding: 0.08rem 0.45rem 0.1rem; border-radius: 0.7rem; border: 0.14rem solid var(--ink); background: linear-gradient(#34406a, #1a2244); font-size: 0.8rem; line-height: 1; color: #9aff7a; white-space: nowrap; box-shadow: 0 0.12rem 0 var(--ink); }
+.round.own { background: radial-gradient(circle at 35% 30%, #fff6a0, #ffc828 60%, #c88a08); color: #3a2400; text-shadow: none; }
+#roundCol { position: absolute; right: max(7rem, calc(env(safe-area-inset-right, 0px) + 6.5rem)); bottom: max(5.5rem, 17vh); display: grid; gap: 1.1rem; }
+#sprintBtn { position: absolute; left: max(15rem, 26vw); bottom: max(6rem, 18vh); }
+#sprintBtn { background: radial-gradient(circle at 35% 30%, #8a9aa8, #4a5460 70%); }
+#sprintBtn.on { background: radial-gradient(circle at 35% 30%, #8affc8, #22a86a 70%); }
+#sprintBtn .meter { position: absolute; inset: -0.55rem; border-radius: 50%; background: conic-gradient(#9aff7a calc(var(--p, 1) * 360deg), rgba(255,255,255,0.15) 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 0.35rem), #000 calc(100% - 0.34rem)); mask: radial-gradient(farthest-side, transparent calc(100% - 0.35rem), #000 calc(100% - 0.34rem)); pointer-events: none; }
+#sprintBtn .run { font-size: 1.9rem; line-height: 1; }
+
+/* Top right: the menu icons (the top left is the Bloxity overlay's) */
+#iconRow { position: absolute; right: max(0.6rem, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 0.6rem); display: flex; gap: 0.3rem; }
+.ib { position: relative; width: 3.3rem; height: 3.75rem; padding: 0; border: 0; background: none; cursor: pointer; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1); }
+.ib .bub { display: grid; place-items: center; width: 2.8rem; height: 2.8rem; margin: 0 auto; border-radius: 0.9rem; border: 0.18rem solid var(--ink); background: var(--bg, linear-gradient(#fff, #d8e8ff)); font-size: 1.45rem; box-shadow: inset 0 0.2rem 0 rgba(255,255,255,0.6), inset 0 -0.25rem 0 rgba(0,0,0,0.12), 0 0.18rem 0 var(--ink); }
+.ib .lb { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); font-size: 0.72rem; font-weight: 700; line-height: 1; white-space: nowrap; }
+.ib:hover { transform: translateY(-2px) scale(1.08); }
+.ib:active { transform: translateY(1px) scale(0.92); }
+.badge { position: absolute; top: -0.3rem; right: -0.2rem; background: var(--red); border: 2px solid var(--ink); border-radius: 1rem; font-size: 0.78rem; padding: 0.02rem 0.36rem; font-weight: 700; z-index: 2; color: #fff; }
+#fps { position: absolute; right: max(1rem, env(safe-area-inset-right, 0px)); bottom: 0.6rem; font-size: 0.85rem; font-weight: 700; color: #7dff6b; }
+
+/* Bottom left: Friend Boost */
+#friendBoost { position: absolute; left: max(0.8rem, env(safe-area-inset-left, 0px)); bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)); font-size: 1rem; font-weight: 700; }
+
+/* Bottom centre: the hotbar */
+#hotbar { position: absolute; left: 50%; bottom: max(0.6rem, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: 0.35rem; }
+.slot { position: relative; width: 3.8rem; height: 3.8rem; border-radius: 0.5rem; border: 3px solid rgba(255,255,255,0.8); background: rgba(20, 30, 60, 0.55); display: grid; place-items: center; font-size: 1.9rem; padding: 0; }
+.slot img { width: 80%; height: 80%; object-fit: contain; filter: drop-shadow(0 0.1rem 0 rgba(0,0,0,0.35)); pointer-events: none; }
+.slot.on { border-color: #ffffff; background: rgba(255, 255, 255, 0.35); box-shadow: 0 0 0.9rem rgba(255,255,255,0.8); }
+.slot .n { position: absolute; left: 0.25rem; top: 0.05rem; font-size: 0.8rem; font-weight: 700; }
+#crosshair { position: absolute; left: 50%; top: 50%; width: 1.6rem; height: 1.6rem; margin: -0.8rem 0 0 -0.8rem; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px var(--ink); pointer-events: none; }
+#crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 0.3rem; height: 0.3rem; margin: -0.15rem; background: #2ad8ff; border-radius: 50%; }
+
+/* Stage title */
+#stageTitle { position: absolute; left: 50%; top: 12rem; transform: translateX(-50%); width: max-content; max-width: 92vw; text-align: center; transition: opacity 0.4s ease; pointer-events: none; }
+#stageTitle .n { white-space: nowrap; font-size: 2.9rem; font-weight: 700; background: linear-gradient(180deg, #ffffff 0%, #e0fff0 55%, #8affc8 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 0.12rem var(--ink); filter: drop-shadow(0 0.25rem 0 var(--ink)); text-shadow: none; }
+#stageTitle .s { font-size: 1.2rem; font-weight: 600; margin-top: 0.15rem; }
+/* "Would you like to go back?" (the reference's revive card) */
+#revive { position: absolute; left: 50%; bottom: 25%; transform: translateX(-50%); display: grid; justify-items: center; gap: 0.35rem; pointer-events: auto; animation: reviveIn 0.3s cubic-bezier(0.34, 1.6, 0.5, 1); }
+#revive .q { font-size: 1.5rem; font-weight: 700; }
+#reviveBtn { position: relative; min-width: 9rem; padding: 0.3rem 1.4rem; font-size: 1.6rem; background: linear-gradient(#a8ff4a, #3ac81a); }
+#reviveBtn small { position: absolute; right: -0.8rem; top: -0.7rem; font-size: 0.9rem; color: #9aff7a; }
+#reviveBar { position: relative; width: 11rem; height: 0.45rem; border-radius: 1rem; background: #fff; overflow: hidden; box-shadow: 0 0 0 2px var(--ink); }
+#reviveFill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: #e8182c; }
+@keyframes reviveIn { 0% { transform: translateX(-50%) scale(0.6); opacity: 0; } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
+/* Welcome back / continue card */
+#oops { position: absolute; left: 50%; bottom: 14%; transform: translateX(-62%); display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.7rem; align-items: center; padding: 0.6rem 0.9rem 0.8rem; background: linear-gradient(#5ad0ff, #1f7ae8); border: 3px solid var(--ink); border-radius: 0.8rem; box-shadow: 0 0.4rem 1.2rem rgba(10,20,60,0.4); overflow: hidden; animation: popIn 0.35s cubic-bezier(0.34, 1.6, 0.5, 1); }
+#oops .flag { grid-row: 1 / 4; font-size: 3.2rem; line-height: 1; }
+#oops h3 { margin: 0; font-size: 1.3rem; }
+#oops p { margin: 0; font-size: 0.8rem; opacity: 0.95; max-width: 12rem; }
+#oops .acts { display: flex; gap: 0.4rem; }
+#oops .acts .btn { font-size: 0.95rem; padding: 0.2rem 0.6rem; border-width: 2px; }
+#oops .timer { position: absolute; left: 0; bottom: 0; height: 0.3rem; background: #fff; }
+@keyframes popIn { 0% { transform: translateX(-62%) scale(0.6); opacity: 0; } 100% { transform: translateX(-62%) scale(1); opacity: 1; } }
+/* Tool pad popup */
+#gearPop { position: absolute; left: 50%; bottom: max(7rem, calc(env(safe-area-inset-bottom, 0px) + 6.5rem)); transform: translateX(-50%); display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.6rem; align-items: center; padding: 0.5rem 0.8rem; background: linear-gradient(#5ad0ff, #1f7ae8); border: 3px solid var(--ink); border-radius: 0.8rem; box-shadow: 0 0.4rem 1rem rgba(10,20,60,0.4); }
+#gearPop .ic { grid-row: 1 / 4; width: 3.2rem; height: 3.2rem; display: grid; place-items: center; font-size: 2.6rem; }
+#gearPop .ic img { width: 100%; height: 100%; }
+#gearPop h3 { margin: 0; font-size: 1.25rem; }
+#gearPop p { margin: 0; font-size: 0.8rem; max-width: 13rem; }
+#gearPop .acts { display: flex; gap: 0.4rem; }
+#gearPop .acts .btn { font-size: 0.95rem; padding: 0.15rem 0.6rem; border-width: 2px; }
+/* TROLLED! */
+#trolled { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); display: grid; justify-items: center; pointer-events: none; }
+#trolled .face { width: 11rem; height: 11rem; background: var(--troll) center / 100% no-repeat; border-radius: 1.4rem; filter: drop-shadow(0 0.4rem 0 var(--ink)); }
+#trolled .t { font-family: "Montserrat", var(--font); font-size: 3.6rem; font-weight: 800; color: #ffe24a; margin-top: -0.6rem; }
+#trolled .s { font-size: 1.3rem; font-weight: 700; }
+#trolled.go .face { animation: trollFace 2.2s cubic-bezier(0.2, 1.5, 0.4, 1) forwards; }
+#trolled.go .t, #trolled.go .s { animation: trollText 2.2s ease forwards; }
+@keyframes trollFace { 0% { transform: scale(0.1) rotate(-30deg); opacity: 0; } 14% { transform: scale(1.15) rotate(6deg); opacity: 1; } 22% { transform: scale(1) rotate(0); } 30%, 50% { transform: rotate(-5deg); } 40%, 60% { transform: rotate(5deg); } 82% { opacity: 1; } 100% { opacity: 0; transform: scale(0.9); } }
+@keyframes trollText { 0%, 10% { opacity: 0; transform: scale(0.6); } 22% { opacity: 1; transform: scale(1.1); } 30%, 82% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+/* the Troll Face jumpscare */
+#scare { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; background: rgba(0,0,0,0.4); }
+#scare .face { width: min(80vmin, 46rem); height: min(80vmin, 46rem); background: var(--troll) center / 100% no-repeat; animation: scare 2.4s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
+#scare .by { position: absolute; bottom: 12%; font-size: 1.6rem; font-weight: 700; }
+@keyframes scare { 0% { transform: scale(0.05) rotate(-40deg); } 12% { transform: scale(1.15) rotate(8deg); } 20% { transform: scale(1) rotate(-4deg); } 30% { transform: scale(1.05) rotate(4deg); } 85% { opacity: 1; } 100% { opacity: 0; transform: scale(1.4); } }
+/* Win banner */
+#winBanner { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+#winBanner .rays { position: absolute; left: 50%; top: 50%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; background: repeating-conic-gradient(rgba(255, 220, 120, 0.25) 0deg 10deg, transparent 10deg 20deg); animation: spin 14s linear infinite; mask-image: radial-gradient(circle, #000 15%, transparent 55%); -webkit-mask-image: radial-gradient(circle, #000 15%, transparent 55%); }
+@keyframes spin { to { transform: rotate(360deg); } }
+#winBanner .t { position: relative; font-size: 4.4rem; font-weight: 700; color: #ffe050; animation: winPop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1); }
+#winBanner .s { position: relative; font-size: 1.6rem; font-weight: 700; }
+@keyframes winPop { 0% { transform: scale(0.2) rotate(-12deg); } 100% { transform: scale(1); } }
+#tpFx { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(-55deg, #b8ffe0 0 4rem, #ffffff 4rem 9rem); opacity: 0; }
+#tpFx.go { animation: tp 0.6s ease forwards; }
+@keyframes tp { 0% { opacity: 0; background-position: 0 0; } 25% { opacity: 0.85; } 70% { opacity: 0.85; } 100% { opacity: 0; background-position: 30rem 0; } }
+#oof { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 4rem; font-weight: 700; color: #ff6a7a; }
+#cheer { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 1.9rem; font-weight: 700; color: #ffe24a; white-space: nowrap; pointer-events: none; }
+#cheer.go { animation: cheerIn 2.6s ease forwards; }
+@keyframes cheerIn { 0% { opacity: 0; transform: translateX(-50%) scale(0.5); } 12% { opacity: 1; transform: translateX(-50%) scale(1.12); } 22% { transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-0.6rem); } }
+
+#toasts { position: absolute; left: 50%; top: 18rem; transform: translateX(-50%); width: min(44rem, 92vw); display: grid; justify-items: center; gap: 0.3rem; pointer-events: none; }
+.toast { font-size: 1.25rem; font-weight: 700; padding: 0.1rem 0.5rem; animation: toastIn 2.8s ease forwards; text-align: center; line-height: 1.25; }
+@keyframes toastIn { 0% { opacity: 0; transform: translateY(0.6rem) scale(0.85); } 10% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-0.6rem); } }
+#tips { position: absolute; left: 50%; bottom: 5.8rem; transform: translateX(-50%); display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; font-size: 0.95rem; font-weight: 600; transition: opacity 0.8s ease; pointer-events: none; }
+#tips kbd { display: inline-block; padding: 0.05rem 0.4rem; margin-right: 0.3rem; border: 2px solid #fff; border-radius: 0.35rem; background: rgba(18,32,74,0.55); font-family: var(--font); font-size: 0.85rem; }
+#promptBtn { position: absolute; left: 0; top: 0; transform: translate(-50%, -110%); will-change: transform; display: flex; align-items: center; gap: 0.45rem; padding: 0.3rem 0.7rem 0.3rem 0.35rem; background: rgba(18, 32, 74, 0.82); border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 0.8rem; font-size: 1rem; font-weight: 700; white-space: nowrap; }
+#promptBtn kbd { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 0.4rem; background: #fff; color: var(--ink); font-family: var(--font); font-weight: 700; }
+
+/* Touch controls */
+#touch { position: absolute; inset: 0; pointer-events: none; }
+#stick { position: absolute; left: max(1.4rem, env(safe-area-inset-left, 0px)); bottom: max(2.6rem, env(safe-area-inset-bottom, 0px)); width: 8.5rem; height: 8.5rem; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.5); pointer-events: auto; touch-action: none; }
+#knob { position: absolute; left: 50%; top: 50%; width: 3.6rem; height: 3.6rem; margin: -1.8rem 0 0 -1.8rem; border-radius: 50%; background: rgba(255,255,255,0.8); border: 3px solid var(--ink); }
+#jumpBtn { position: absolute; right: max(1.4rem, env(safe-area-inset-right, 0px)); bottom: max(2.6rem, env(safe-area-inset-bottom, 0px)); width: 6rem; height: 6rem; border-radius: 50%; font-size: 1.2rem; pointer-events: auto; }
+#useBtn { position: absolute; right: max(8.2rem, env(safe-area-inset-right, 0px)); bottom: max(3.6rem, env(safe-area-inset-bottom, 0px)); width: 4.6rem; height: 4.6rem; border-radius: 50%; font-size: 1.9rem; pointer-events: auto; }
+#downBtn { position: absolute; right: max(1.8rem, env(safe-area-inset-right, 0px)); bottom: max(9.6rem, env(safe-area-inset-bottom, 0px)); width: 4.2rem; height: 4.2rem; border-radius: 50%; font-size: 1.4rem; pointer-events: auto; }
+body.touch #leftCol { top: max(8rem, 24vh); gap: 0.4rem; }
+body.touch #leftCol .chunk { height: 2.7rem; min-width: 9rem; font-size: 1.25rem; }
+body.touch .chunk .ico { font-size: 2rem; }
+body.touch #rightCol { top: max(6.4rem, 19vh); gap: 0.4rem; }
+body.touch .icon .pic { width: 3.4rem; height: 3.4rem; font-size: 2.5rem; }
+body.touch #roundCol { right: max(1.4rem, env(safe-area-inset-right, 0px)); bottom: auto; top: calc(max(6.4rem, 19vh) + 13rem); gap: 0.6rem; }
+body.touch .round { width: 3.8rem; height: 3.8rem; font-size: 0.85rem; }
+body.touch #sprintBtn { left: auto; right: max(8rem, env(safe-area-inset-right, 0px)); bottom: max(10rem, env(safe-area-inset-bottom, 0px)); }
+body.touch #friendBoost { display: none; }
+body.touch #hotbar { bottom: max(0.4rem, env(safe-area-inset-bottom, 0px)); }
+
+/* Panels ---------------------------------------------------------------- */
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 20, 60, 0.35); z-index: 20; }
+.panel { position: relative; width: min(48rem, 94vw); max-height: min(38rem, 88vh); display: grid; grid-template-rows: auto auto 1fr; background: radial-gradient(120% 80% at 50% 0%, #8affd0 0%, #22c88a 45%, #138a6a 100%); border: 4px solid var(--ink); border-radius: 1.2rem; box-shadow: inset 0 0.3rem 0 rgba(255,255,255,0.35), 0 0.5rem 0 var(--ink), 0 1rem 2rem rgba(10,20,60,0.4); animation: panelIn 0.3s cubic-bezier(0.34, 1.6, 0.5, 1); }
+.panel::before { content: ''; position: absolute; left: 0.4rem; right: 0.4rem; top: 0.35rem; height: 38%; border-radius: 1rem 1rem 2rem 2rem; background: linear-gradient(rgba(255,255,255,0.22), rgba(255,255,255,0)); pointer-events: none; }
+@keyframes panelIn { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.panel header { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.9rem 0.2rem; }
+.panel h2 { margin: 0; font-size: 2.2rem; transform: rotate(-3deg); }
+.x { width: 2.6rem; height: 2.6rem; padding: 0; font-size: 1.3rem; }
+.tabs { display: flex; gap: 0.35rem; padding: 0 0.9rem 0.35rem; flex-wrap: wrap; }
+.tabs button { font-size: 0.95rem; padding: 0.25rem 0.75rem; border-width: 2px; }
+.tabs button.on { background: linear-gradient(#fff, #d8fff0); color: var(--ink); text-shadow: none; }
+.body { overflow-y: auto; padding: 0.3rem 0.9rem 0.9rem; display: grid; gap: 0.5rem; align-content: start; }
+.body::-webkit-scrollbar { width: 0.6rem; } .body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.6); border-radius: 1rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.6rem, 1fr)); gap: 0.5rem; }
+.card { position: relative; display: grid; justify-items: center; align-content: start; gap: 0.2rem; padding: 0.5rem 0.4rem 0.55rem; border: 3px solid var(--ink); border-radius: 0.9rem; background: linear-gradient(#ffffff38, #00000014); box-shadow: inset 0 0.2rem 0 rgba(255,255,255,0.35); text-align: center; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1), box-shadow 0.18s ease; }
+.card:hover { transform: translateY(-3px) scale(1.03); box-shadow: inset 0 0.2rem 0 rgba(255,255,255,0.35), 0 0.5rem 1rem rgba(10,20,60,0.25); }
+.card .ic { font-size: 2.6rem; line-height: 1.15; height: 3rem; display: grid; place-items: center; filter: drop-shadow(0 0.12rem 0 rgba(0,0,0,0.3)); }
+.card .ic img { height: 3rem; width: 3rem; object-fit: contain; }
+.card .nm { font-size: 1.05rem; font-weight: 700; line-height: 1.1; }
+.card .ds { font-size: 0.78rem; opacity: 0.95; line-height: 1.15; min-height: 1.8em; }
+.card .btn { font-size: 1rem; padding: 0.2rem 0.7rem; border-width: 2px; margin-top: 0.15rem; }
+.card.hot { background: linear-gradient(#ffd86a, #ff7a2a); }
+.card.danger { background: linear-gradient(#ff8a8a, #c8182c); }
+.card.gold { background: linear-gradient(#ffe07a, #ff8a2a); }
+.card.troll { background: linear-gradient(#ffe86a, #e8a414); }
+.card.own { box-shadow: inset 0 0 0 3px #9aff7a; }
+.sec { font-size: 1.15rem; font-weight: 700; margin: 0.3rem 0 0; }
+.note { margin: 0; font-size: 0.85rem; opacity: 0.95; }
+.row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem; border: 3px solid var(--ink); border-radius: 0.8rem; background: rgba(255,255,255,0.16); }
+.row .ic { font-size: 1.8rem; }
+.row .tx { flex: 1; display: grid; }
+.row .tx b { font-size: 1.05rem; }
+.row .tx small { font-size: 0.8rem; opacity: 0.95; }
+.row .btn { font-size: 0.95rem; padding: 0.2rem 0.7rem; border-width: 2px; }
+.row input[type=range] { flex: 1; accent-color: #fff; }
+.input { font-family: var(--font); font-size: 1rem; padding: 0.35rem 0.6rem; border: 3px solid var(--ink); border-radius: 0.6rem; flex: 1; min-width: 0; }
+
+.card2 { position: relative; display: grid; justify-items: center; gap: 0.5rem; width: min(24rem, 90vw); padding: 1.2rem 1.2rem 1rem; background: radial-gradient(120% 80% at 50% 0%, #8affd0 0%, #22c88a 50%, #138a6a 100%); border: 4px solid var(--ink); border-radius: 1.2rem; box-shadow: 0 0.5rem 0 var(--ink); text-align: center; animation: panelIn 0.3s cubic-bezier(0.34, 1.6, 0.5, 1); }
+.card2 h2 { margin: 0; font-size: 1.8rem; }
+.card2 .big-ic { font-size: 3.6rem; height: 4rem; display: grid; place-items: center; }
+.card2 .big-ic img { height: 4rem; }
+.card2 .acts { display: flex; gap: 0.6rem; }
+.card2 .acts .btn { font-size: 1.15rem; padding: 0.35rem 1.2rem; }
+.card2 .x { position: absolute; right: -0.8rem; top: -0.8rem; }
+.cost { font-size: 1.3rem; font-weight: 700; }
+
+/* Daily */
+.dailyCards { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; width: min(40rem, 92vw); }
+.dcard { display: grid; justify-items: center; gap: 0.1rem; padding: 0.4rem 0.1rem; border: 3px solid var(--ink); border-radius: 0.7rem; background: rgba(255,255,255,0.18); font-size: 0.75rem; font-weight: 700; text-align: center; }
+.dcard .d { font-size: 0.85rem; }
+.dcard .i { font-size: 1.5rem; }
+.dcard.done { opacity: 0.55; }
+.dcard.now { background: linear-gradient(#ffe86a, #ffb81c); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.06); } }
+
+/* Loader: the troll grin bobbing */
+#start { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #b8ffe4 0%, #3ae6a2 40%, #138a6a 100%); z-index: 40; }
+.loader { display: grid; justify-items: center; gap: 1rem; text-align: center; }
+.logo { font-family: "Montserrat", var(--font); font-size: 4.4rem; font-weight: 800; letter-spacing: 0.02em; line-height: 0.95; color: #ffe24a; }
+.logo small { display: block; font-family: var(--font); font-size: 1.5rem; font-weight: 700; margin-top: 0.45rem; color: #fff; }
+.loadFace { width: 7.5rem; height: 7.5rem; border-radius: 1.2rem; border: 4px solid var(--ink); background: var(--troll, none) center / 100% no-repeat, #ffd028; box-shadow: inset 0 -0.4rem 0 rgba(140,80,0,0.3), 0 0.4rem 0 var(--ink); animation: loadBob 1.4s ease-in-out infinite; }
+@keyframes loadBob { 50% { transform: translateY(-0.5rem) rotate(-6deg); } }
+#loading { font-size: 1.4rem; font-weight: 700; }
+.err { color: #fff; max-width: 22rem; }
+.cup { display: inline-block; font-style: normal; margin-right: 0.12em; filter: drop-shadow(0 0.08em 0 rgba(0,0,0,0.3)); }
+.diff { display: inline-block; padding: 0.02rem 0.45rem; border-radius: 0.4rem; border: 2px solid var(--ink); color: #fff; font-weight: 800; font-size: 0.85em; letter-spacing: 0.04em; text-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+#clearBanner { position: absolute; left: 50%; top: 12rem; transform: translateX(-50%); text-align: center; pointer-events: none; white-space: nowrap; }
+#clearBanner .t { font-family: "Montserrat", var(--font); font-size: 3.4rem; font-weight: 800; color: #9aff7a; letter-spacing: 0.02em; }
+#clearBanner .s { font-size: 1.35rem; font-weight: 700; margin-top: 0.2rem; }
+#clearBanner.go .t { animation: clearPop 1.9s cubic-bezier(0.2, 1.5, 0.4, 1) forwards; }
+#clearBanner.go .s { animation: clearFade 1.9s ease forwards; }
+@keyframes clearPop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 18% { transform: scale(1.12) rotate(2deg); opacity: 1; } 30% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-1rem) scale(0.96); } }
+@keyframes clearFade { 0%, 12% { opacity: 0; } 25%, 85% { opacity: 1; } 100% { opacity: 0; } }
+
+@media (max-width: 760px), (max-height: 520px) {
+    :root { font-size: clamp(8px, calc(100vmin / 46), 14px); }
+    #trolled { top: 30%; }
+    #trolled .face { width: 7rem; height: 7rem; }
+    #trolled .t { font-size: 2.6rem; }
+    .panel h2 { font-size: 1.6rem; }
+    #stageTitle .n { font-size: 2.1rem; }
+    #stageBar { width: min(13rem, 30vw); }
+    #topBtns { gap: 1.6rem; }
+    .chunk { height: 2.8rem; font-size: 1.25rem; padding-right: 2.1rem; }
+    .ib { width: 2.95rem; height: 3.35rem; }
+    .ib .bub { width: 2.5rem; height: 2.5rem; font-size: 1.3rem; }
+}
+@media (max-aspect-ratio: 16/10) and (min-width: 761px) {
+    #iconRow { flex-wrap: wrap; justify-content: flex-end; width: 10.6rem; row-gap: 0.4rem; }
+    #rightCol { top: max(12rem, 28vh); }
+}
+/* Low quality: the HUD's decorative animations stop (every animated shine is a repaint each frame) */
+body.lowfx .chunk .sheen::after, body.lowfx .loadFace { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+    .toast, #winBanner .rays, .dcard.now, .chunk .sheen::after, #cheer.go, .loadFace, #scare .face, #trolled.go .face { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+    <canvas id="view" tabindex="0" aria-label="Game view"></canvas>
+    <canvas id="speedLines" aria-hidden="true"></canvas>
+    <div id="vignette" aria-hidden="true"></div>
+
+    <div id="hud" hidden>
+        <div id="flash" class="passive" aria-hidden="true"></div>
+        <div id="blind" class="passive" aria-hidden="true"></div>
+        <div id="tpFx" class="passive" aria-hidden="true"></div>
+
+        <!-- Top centre, like the reference -->
+        <div id="topBar">
+            <div id="topBtns">
+                <button class="chunk c-red o" id="btnNuke"><span class="sheen"></span>Nuke Server<span class="ico" aria-hidden="true">💣</span></button>
+                <button class="chunk c-lime o" id="btnSkipFinal"><span class="sheen"></span>Skip To Final<span class="ico" aria-hidden="true">🏁</span><span class="sub o1" id="skipFinalPrice">🏆 700</span></button>
+            </div>
+            <div id="infoRow">
+                <div id="stageBar" class="passive"><div id="stageFill"></div><div id="stageText" class="o1">Lobby</div></div>
+                <div id="coinBar"><span class="trophy" aria-hidden="true">🏆</span><b id="coinVal">0</b><button class="btn g-green o1" id="coinPlus" aria-label="Boosts">+</button><span class="o1" id="boostTag" hidden>x2 WINS</span></div>
+            </div>
+        </div>
+
+        <!-- Left: Fly / Mega Punch / Laser Gun / Admin -->
+        <div id="leftCol">
+            <button class="chunk c-green o" id="btnFly"><span class="sheen"></span>Fly<span class="ico" aria-hidden="true">🧞</span></button>
+            <button class="chunk c-rainbow o" id="btnMega"><span class="sheen"></span>Mega Punch<span class="ico" aria-hidden="true">👊</span></button>
+            <button class="chunk c-blue o" id="btnLaser"><span class="sheen"></span>Laser Gun<span class="ico" aria-hidden="true">🔫</span></button>
+            <button class="chunk c-dark o" id="btnAdmin"><span class="hd">HD</span>Admin</button>
+        </div>
+        <!-- Right: Big Slap, Troll -->
+        <div id="rightCol">
+            <button class="icon" id="btnBigSlap" aria-label="Big Slap"><span class="pic" id="bigSlapPic">🖐️</span><span class="bang o1">!</span><span class="lb o">Big Slap</span></button>
+            <button class="icon" id="btnTroll" aria-label="Troll menu"><span class="pic"></span><span class="lb o">Troll</span></button>
+        </div>
+        <div id="roundCol">
+            <button class="round o1" id="btnSpeedSlap"><span class="coin">🏆 500</span><big>x2</big>Speed<br>Slap</button>
+            <button class="round o1" id="btnDoubleJump"><span class="coin">🏆 1.2K</span><big>x2</big>Jump</button>
+        </div>
+        <button class="round o1" id="sprintBtn" aria-label="Sprint"><span class="meter"></span><span class="run">🏃</span>Sprint</button>
+
+        <!-- Top right: menu icons (the top left is the Bloxity overlay's) -->
+        <div id="iconRow">
+            <button class="ib" id="btnStore" aria-label="Shop"><span class="bub" style="--bg:linear-gradient(#fff3b0,#ffc428)">🛒</span><span class="lb o1">Shop</span></button>
+            <button class="ib" id="btnDaily" aria-label="Daily rewards"><span class="bub" style="--bg:linear-gradient(#d8f4ff,#7ad0ff)">📅</span><span class="lb o1">Daily</span><span class="badge" id="dailyBadge" hidden>!</span></button>
+            <button class="ib" id="btnGift" aria-label="Playtime gifts"><span class="bub" style="--bg:linear-gradient(#ffe0e0,#ff7a8a)">🎁</span><span class="lb o1" id="giftLb">2m</span><span class="badge" id="giftBadge" hidden>!</span></button>
+            <button class="ib" id="btnTeleport" aria-label="Teleport"><span class="bub" style="--bg:linear-gradient(#e0ffe0,#7aea8a)">🚩</span><span class="lb o1">Teleport</span></button>
+            <button class="ib" id="btnInvite" aria-label="Invite friends"><span class="bub" style="--bg:linear-gradient(#f0e0ff,#b48aff)">👥</span><span class="lb o1">Invite</span></button>
+            <button class="ib" id="btnConfig" aria-label="Settings"><span class="bub" style="--bg:linear-gradient(#ffffff,#d0d8e8)">⚙️</span><span class="lb o1">Settings</span></button>
+        </div>
+
+        <div id="friendBoost" class="o passive">Friend Boost: 0%</div>
+        <div id="hotbar"></div>
+        <div id="crosshair" hidden></div>
+
+        <div id="stageTitle" class="passive" style="opacity:0"><div class="n o" id="stageName">Stage 1</div><div class="s o1" id="stageSub"></div></div>
+        <div id="revive" hidden>
+            <div class="q o">Would you like to go back?</div>
+            <button class="btn o" id="reviveBtn">Revive<small class="o1" id="revivePrice">🏆 3</small></button>
+            <div id="reviveBar"><div id="reviveFill"></div></div>
+        </div>
+        <div id="oops" hidden>
+            <span class="flag" aria-hidden="true">🚩</span>
+            <h3 class="o1" id="oopsTitle">Welcome back!</h3>
+            <p class="o1" id="oopsText">Continue from your checkpoint.</p>
+            <div class="acts"><button class="btn g-green o1" id="oopsTp">Teleport</button><button class="btn g-red o1" id="oopsClose">Close</button></div>
+            <div class="timer" id="oopsTimer"></div>
+        </div>
+        <div id="gearPop" hidden>
+            <span class="ic" id="gpIc">🌀</span>
+            <h3 class="o1" id="gpName">Speed Coil</h3>
+            <p class="o1" id="gpDesc">Run faster.</p>
+            <div class="acts"><button class="btn g-green o1" id="gpBuy">Buy</button><button class="btn g-grey o1" id="gpClose">Close</button></div>
+        </div>
+        <div id="clearBanner" class="passive" hidden><div class="t o" id="clearT">STAGE 1 CLEAR!</div><div class="s o1" id="clearS"></div></div>
+        <div id="trolled" class="passive" hidden><div class="face"></div><div class="t o">TROLLED!</div><div class="s o1" id="trolledS"></div></div>
+        <div id="scare" class="passive" hidden><div class="face"></div><div class="by o" id="scareBy"></div></div>
+        <div id="cheer" class="o passive" hidden></div>
+        <div id="winBanner" hidden><div class="rays"></div><div class="t o">YOU BEAT THE TOWER!</div><div class="s o" id="winSub">+150 Wins</div></div>
+        <div id="oof" class="o passive" hidden>OOF!</div>
+        <div id="toasts"></div>
+        <div id="tips" class="o1" hidden></div>
+        <button id="promptBtn" hidden><kbd>E</kbd><span id="promptTxt"></span></button>
+        <div id="fps" class="o1 passive" hidden>60 FPS</div>
+
+        <div id="touch" hidden>
+            <div id="stick"><div id="knob"></div></div>
+            <button class="btn g-blue o" id="jumpBtn">JUMP</button>
+            <button class="btn g-pink o" id="useBtn" hidden>🖐️</button>
+            <button class="btn g-blue o" id="downBtn" hidden>⬇</button>
+        </div>
+    </div>
+
+    <!-- Panels: Shop, Trails, Settings, Gifts, Invite, Teleport, Admin, Troll -->
+    <div id="modal" class="overlay" hidden>
+        <div class="panel" role="dialog" aria-labelledby="modalTitle">
+            <header><h2 class="o" id="modalTitle">SHOP!</h2><button class="btn g-red x o1" id="modalClose" aria-label="Close">X</button></header>
+            <div class="tabs" id="modalTabs"></div>
+            <div class="body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="confirm" class="overlay" hidden>
+        <div class="card2" role="dialog" aria-labelledby="confirmTitle">
+            <button class="btn g-red x o" id="confirmClose" aria-label="Close">X</button>
+            <div class="big-ic" id="confirmIc">🛒</div>
+            <h2 class="o" id="confirmTitle">Buy?</h2>
+            <div class="o1" id="confirmText"></div>
+            <div class="cost o1" id="confirmCost"></div>
+            <div class="acts"><button class="btn g-green o" id="confirmYes">Buy</button><button class="btn g-grey o" id="confirmNo">Cancel</button></div>
+            <small class="o1" id="confirmNote" style="opacity:0.95"></small>
+        </div>
+    </div>
+
+    <div id="daily" class="overlay" hidden>
+        <div class="card2" style="width:min(42rem,94vw)" role="dialog" aria-labelledby="dailyTitle">
+            <button class="btn g-red x o" id="dailyClose" aria-label="Close">X</button>
+            <h2 class="o" id="dailyTitle">📅 Daily Rewards</h2>
+            <div class="dailyCards" id="dailyCards"></div>
+            <div class="o1" id="dailyLeft">Your daily reward is ready!</div>
+            <button class="btn g-yellow o" id="dailyClaim" style="font-size:1.3rem;padding:0.35rem 2rem">CLAIM</button>
+        </div>
+    </div>
+
+    <div id="offline" class="overlay" hidden>
+        <div class="card2" role="alertdialog" aria-labelledby="offlineTitle">
+            <h2 class="o" id="offlineTitle">Disconnected</h2>
+            <div class="o1">Lost connection to the server. Your progress is saved — rejoin to keep going.</div>
+            <div class="acts"><button class="btn g-green o" id="reconnectBtn">Rejoin</button></div>
+        </div>
+    </div>
+
+    <div id="start">
+        <div class="loader">
+            <div class="loadFace" aria-hidden="true"></div>
+            <div class="logo o">TROLL EASY TOWER<small class="o1">12 "easy" stages. Trust nothing.</small></div>
+            <div id="loading" class="o1">Loading…</div>
+            <div class="err o1" id="connectErr" hidden></div>
+            <button class="btn g-green o" id="playBtn" hidden>Try again</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://sdk.bloxity.io/v1/legion-sdk.min.js"></script>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
