@@ -125,6 +125,16 @@ function swingHeld(u, k) {
     u.held.position.set(HOLD.x - s * 2.4, HOLD.y + s * 0.3, HOLD.z + s * 1.1);
     u.held.rotation.set(0, -s * 1.4, s * 0.3);
 }
+// With a Bloxity avatar the tool goes in its actual right hand (its arms aren't where the blocky rig's are)
+const handTmp = new V3();
+function followHand(u) {
+    if (!u.held || !u.blox) return;
+    const b = u.blox.bones['ArmR2_leaf'] || u.blox.bones.ArmR2;
+    if (!b) return;
+    b.getWorldPosition(handTmp);
+    u.body.worldToLocal(handTmp);
+    u.held.position.copy(handTmp);
+}
 function setTrail(g, id) {
     const u = g.userData;
     const d = trailById[id] || trailById.starter;
@@ -558,7 +568,7 @@ class Remote {
         if (u.tool && u.held && !climb) holdPose(u.body);
         if (this.swing > 0) this.swing = Math.max(0, this.swing - dt);
         swingHeld(u, this.swing > 0 ? 1 - this.swing / 0.28 : 0);
-        if (this.blox) this.blox.update(dt, { moving, air: air || fly, speed: this.vel, t, pose: climb ? 'climb' : undefined, hold: !!u.held, slap: this.swing > 0 ? 1 - this.swing / 0.28 : 0 });
+        if (this.blox) { this.blox.update(dt, { moving, air: air || fly, speed: this.vel, t, pose: climb ? 'climb' : undefined, hold: !!u.held, slap: this.swing > 0 ? 1 - this.swing / 0.28 : 0 }); followHand(u); }
         const stepN = Math.floor(this.phase / Math.PI);
         if (moving && stepN !== this.stepN && camera.position.distanceToSquared(r.position) < 900) {
             const s = groundUnder(r.position);
@@ -1350,7 +1360,7 @@ function update(dt) {
         if (P.slapAnim > 0) P.slapAnim = Math.max(0, P.slapAnim - dt);
         const slapK = P.slapAnim > 0 ? 1 - P.slapAnim / 0.28 : 0;
         swingHeld(u, slapK);
-        if (localAvatar) localAvatar.update(dt, { moving: P.moving && P.onGround, air: !P.onGround && !P.climbing, speed: hs, t, pose: P.climbing ? 'climb' : undefined, hold: !!u.held, slap: slapK });
+        if (localAvatar) { localAvatar.update(dt, { moving: P.moving && P.onGround, air: !P.onGround && !P.climbing, speed: hs, t, pose: P.climbing ? 'climb' : undefined, hold: !!u.held, slap: slapK }); followHand(u); }
         setTool(rig, id); setTrail(rig, S.trail);
         if (u.carpet) { u.carpet.visible = P.flying; waveCarpet(u.carpet, t, P.moving ? 1.4 : 0.8); }
         u.trail.update(trailAt(rig), (P.moving || !P.onGround), dt, t);
@@ -1496,6 +1506,7 @@ function hazards(t, st, dt) {
 // =====================================================================================
 // Boot
 // =====================================================================================
+let frameErrors = 0;
 let lastFrame = 0, loadingSignaled = false, fpsAcc = 0, fpsFrames = 0, showFps = false;
 const fpsWatch = { t: 0, low: 0 };
 function watchFps(fps) {
@@ -1518,7 +1529,12 @@ function frame(now) {
     if (!loadingSignaled) { loadingSignaled = true; BX.triggerAllSettings(); }
     pollGamepad();
     padButtons();
-    if (running) { update(dt); updateCamera(dt); render(); }
+    // one bad frame (an odd avatar part, say) must never stop the game: log it and carry on
+    if (running) {
+        try { update(dt); updateCamera(dt); render(); } catch (e) {
+            if (frameErrors++ < 5) console.error('[frame]', e);
+        }
+    }
     requestAnimationFrame(frame);
 }
 
@@ -1732,5 +1748,6 @@ if (import.meta.env.DEV || import.meta.env.VITE_QA) {
         noHazards: (on) => { qaNoHazards = !!on; },
         course: { COURSE, CHECKPOINTS, START_Y, frame: stageFrame },
         movers, timeds, lasers, solids, ground: () => P.ground, press: () => pressJump(), bot: botInput,
+        avatar: () => setupLocalAvatar(), rig: () => rig,
     };
 }

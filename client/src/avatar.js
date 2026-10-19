@@ -102,6 +102,20 @@ function loadPart(info, id) {
     return partCache.get(key);
 }
 
+// A rigid part's geometry with every vertex bound to the bone the original part mostly follows
+export function rigidToSkinned(geo, orig) {
+    const g = geo.clone(), si = orig && orig.getAttribute('skinIndex'), sw = orig && orig.getAttribute('skinWeight');
+    const weight = new Map();
+    if (si && sw) for (let i = 0; i < si.count; i++) weight.set(si.getX(i), (weight.get(si.getX(i)) || 0) + sw.getX(i));
+    let bone = 0, best = -1;
+    for (const [b, w] of weight) if (w > best) { best = w; bone = b; }
+    const n = g.attributes.position.count, idx = new Uint16Array(n * 4), w = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) { idx[i * 4] = bone; w[i * 4] = 1; }
+    g.setAttribute('skinIndex', new T.Uint16BufferAttribute(idx, 4));
+    g.setAttribute('skinWeight', new T.Float32BufferAttribute(w, 4));
+    return g;
+}
+
 // Emote clip sampling (degrees, deltas over bind pose, smoothstep between keys)
 function sampleTrack(keys, t) {
     if (!keys || !keys.length) return null;
@@ -238,12 +252,17 @@ export class BloxAvatar {
     swapPart(slot, id) {
         const target = this.partMeshes[slot];
         if (!target) return;
-        if (!isEquipped(id)) { target.geometry = this.origGeos[slot]; return; }
+        // a skinned mesh caches its bounds from the geometry it had: recompute them for the new one
+        const use = (geo) => { target.geometry = geo; target.boundingSphere = null; target.boundingBox = null; };
+        if (!isEquipped(id)) { use(this.origGeos[slot]); return; }
         loadPart(PART_INFO[slot], id).then((gltf) => {
             if (!gltf || this.disposed || this.eq[PART_INFO[slot].key] !== id) return;
             let sm = null, rm = null;
             gltf.scene.traverse((c) => { if (c.isSkinnedMesh && !sm) sm = c; else if (c.isMesh && !rm) rm = c; });
-            if (!sm) { if (rm) target.geometry = rm.geometry; return; }
+            // a part made as a plain mesh gets skinned to the bone its slot follows (a skinned mesh
+            // without skin data breaks the renderer's bounds and sorting: the game would freeze)
+            if (!sm) { if (rm) use(rigidToSkinned(rm.geometry, this.origGeos[slot])); return; }
+            if (!sm.geometry.getAttribute('skinIndex') || !sm.geometry.getAttribute('skinWeight')) { use(rigidToSkinned(sm.geometry, this.origGeos[slot])); return; }
             const geo = sm.geometry.clone();
             if (this.skeleton && sm.skeleton) {
                 const nameMap = new Map();
@@ -253,7 +272,7 @@ export class BloxAvatar {
                 const si = geo.getAttribute('skinIndex');
                 if (si) { for (let i = 0; i < si.array.length; i++) { const m = idx.get(si.array[i]); if (m !== undefined) si.array[i] = m; } si.needsUpdate = true; }
             }
-            target.geometry = geo;
+            use(geo);
         });
     }
 
