@@ -558,6 +558,10 @@ class Remote {
         r.rotation.y = lerpAngle(r.rotation.y, p.ry, k) + u.spinA;
         r.scale.setScalar(u.fxScale);
         if (p.av !== this.av) this.setAvatar(p.av);
+        // players far up or down the tower aren't drawn or animated (busy servers stay smooth)
+        const seen = camera.position.distanceToSquared(r.position) < 240 * 240;
+        if (r.visible !== seen) { r.visible = seen; if (u.trail) u.trail.reset(); }
+        if (!seen) { this.lastX = r.position.x; this.lastZ = r.position.z; setTool(r, p.tool); return; }
         const moved = Math.hypot(r.position.x - this.lastX, r.position.z - this.lastZ);
         this.vel += ((dt > 0 ? moved / dt : 0) - this.vel) * Math.min(1, dt * 6);
         this.lastX = r.position.x; this.lastZ = r.position.z;
